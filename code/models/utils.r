@@ -27,3 +27,20 @@ fig.save = function(...,w=4,h=3){
   fpath = root.path('fig',fname,create=TRUE)
   ggsave(fpath,w=w,h=h)
 }
+fit = function(case,y.targ,p.adj){
+  # fit case to data in y.targ varying p.fit
+  p.0 = par.def()[p.adj] # initial par
+  kwds = c(p.0,list(case=case,dt=1)) # helper for do.call
+  var.targ = colnames(y.targ)[2:ncol(y.targ)] # target vars
+  err.fun = function(p.i){
+    kwds[1:length(p.i)] = p.i # overwrite pars
+    y.i = do.call(solve,kwds) # run model
+    yy = merge(y.targ,y.i,by='time') # select target data
+    err = sum(sapply(var.targ,function(v){
+      # sum error: relative squared per var
+      err.v = (yy[paste0(v,'.x')] - yy[paste0(v,'.y')]) / yy[paste0(v,'.x')]
+      return(sum(err.v^2))
+    }))
+  }
+  p.fit = optim(p.0,err.fun)$par
+}
