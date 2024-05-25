@@ -3,7 +3,7 @@ source('models/utils.r')
 
 check.leak = function(){
   ym = y.melt(lapply(cases,solve,mort=0))
-  plot(ym,c('total'),color=variable,linetype=case)
+  plot(ym,c('total'),linetype=case)
   fig.save('leaks')
 }
 base.case = function(){
