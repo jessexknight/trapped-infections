@@ -1,0 +1,32 @@
+# hidden folders
+.priv/
+.old/
+.tmp/
+
+# code
+__pycache__/
+*.pyc
+pyplots*
+Rplots*
+code/tikz/main.pdf
+
+# tex
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*-blx.bib
+*.bcf
+*.ptc
+*.nav
+*.snm
+*.vrb
+*.run.xml
+*.synctex
+*.synctex.gz
+*-converted-to.pdf
+
+# windows
+.DS_Store
