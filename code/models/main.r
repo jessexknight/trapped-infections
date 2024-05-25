@@ -1,9 +1,11 @@
-# Jesse Knight 2024 April 22
 library('deSolve')
 library('ggplot2')
 library('reshape2')
 # ------------------------------------------------------------------------------
 # indices
+# g = gen pop; k = key pop
+# S = susceptible; A = acute infection; Y = chronic infection
+# u = unpaired (all models); p = post-transm (EPA); gXX: pair states (pair-based)
 ylabs = c(
   'gSu','gAu','gYu','kSu','kAu','kYu', # flat  1: 6
   'gAp','gYp','kAp','kYp',             # epa   7:10
@@ -12,41 +14,42 @@ nc = length(ylabs)
 for (i in seq(nc)){ assign(ylabs[i],i,env=.GlobalEnv) } # HACK
 # ------------------------------------------------------------------------------
 # parameters
+# unit: years
 par.def = function(...){
   p = list(
     # populations
-    prop_k = .02,
-    size = 1000,
-    exit = 1/35,
-    turn = 1/8.2,
+    prop_k = .02, # prop key pop entering
+    size = 1000, # total size
+    exit = 1/35, # pop turnover
+    turn = 1/8.2, # group turnover
     # partnerships
-    acts_sh = 3,
-    rate_sh_kg = 60,
-    rate_sh_kk = 60,
-    gap_lo_gg = .5,
-    dur_lo  = 10,
-    acts_lo = 10*70,
+    acts_sh = 3, # acts per short ptr
+    rate_sh_kg = 60, # short ptrs rate: key with gen
+    rate_sh_kk = 60, # short ptrs rate: key with key
+    gap_lo_gg = .5, # mean gap b/w long ptrs
+    dur_lo  = 10, # duration of long ptrs
+    freq_lo = 70, # act freq per long ptr
     # infection
-    beta_Y = .0007,
-    beta_A = .0007*26,
-    mort = 1/11,
-    prog = 4,
-    init_Y = 1
+    beta_Y = .0007, # chronic transm risk per act
+    beta_A = .0007*26, # acute transm risk per act
+    mort = 1/11, # mort rate among chronic
+    prog = 4, # acute-to-chronic rate
+    init_Y = 1 # init num infections
   )
-  # override
+  # allow override
   pu = list(...)
   for (name in names(pu)){
     p[[name]] = pu[[name]]
   }
   # conditional
-  p$prop_g = 1-p$prop_k
-  p$size_k = p$size * p$prop_k * p$exit / (p$turn + p$exit)
-  p$size_g = p$size - p$size_k
-  p$rate_sh_gk = p$rate_sh_kg * p$size_k / p$size_g
-  p$rate_lo_gg = 1/(p$gap_lo_gg+p$dur_lo)
-  p$cur_lo_gg = p$rate_lo_gg * p$dur_lo
-  p$freq_lo = p$acts_lo / p$dur_lo
-  p$prop_pair = 2/p$gap_lo_gg / (1/p$dur_lo + 2/p$gap_lo_gg + p$exit)
+  p$prop_g = 1-p$prop_k # prop gen pop entering
+  p$size_k = p$size * p$prop_k * p$exit / (p$turn + p$exit) # equilib key pop size
+  p$size_g = p$size - p$size_k # equilib gen pop size
+  p$rate_sh_gk = p$rate_sh_kg * p$size_k / p$size_g # short ptrs rate: gen with key
+  p$rate_lo_gg = 1/(p$gap_lo_gg+p$dur_lo) # long ptrs rate: gen with gen
+  p$cur_lo_gg = p$rate_lo_gg * p$dur_lo # mean num long ptrs among gen pop
+  p$acts_lo = p$freq_lo * p$dur_lo # acts per long ptr
+  p$prop_pair = 2/p$gap_lo_gg / (1/p$dur_lo + 2/p$gap_lo_gg + p$exit) # equilib prop paired
   # return
   return(p)
 }
@@ -128,7 +131,6 @@ dy.epa = function(t,y,p){
   dy[kYp] = -y[kYp]*p$exit -y[kYp]*p$turn -y[kYp]/p$dur_lo +y[kAp]*p$prog -y[kYp]*p$mort
   dy[gYu] = -y[gYu]*p$exit +y[kYu]*p$turn +y[gYp]/p$dur_lo +y[gAu]*p$prog -y[gYu]*p$mort -foi_Ygg
   dy[kYu] = -y[kYu]*p$exit -y[kYu]*p$turn +y[kYp]/p$dur_lo +y[kAu]*p$prog -y[kYu]*p$mort
-  # TODO: there is a small +leak, even with mort=0
   # return
   return(list(dy=dy,
     foi_g  = unname(foi_g),
@@ -209,7 +211,7 @@ solve = function(case,...){
   dy = get(paste0('dy.',case))
   y0 = get(paste0('y0.',case))(p)
   y  = as.data.frame(ode(y0,time,dy,p))
-  y[,12:17] = y[,12:17] * 2 # HACK
+  y[,12:17] = y[,12:17] * 2 # HACK for pair state sizes (i+1 for time)
   y$total = rowSums(y[,ylabs])
   return(y)
 }
